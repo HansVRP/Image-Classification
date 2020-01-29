@@ -80,7 +80,10 @@ class TwoLayerNet(object):
         #############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        scores_lay1 = X.dot(W1) + b1      # N x H
+        scores_relu = np.maximum(0, scores_lay1) # add non linearity  N x H    
+        scores = scores_relu.dot(W2) + b2 #N x C
+        
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -97,8 +100,19 @@ class TwoLayerNet(object):
         # classifier loss.                                                          #
         #############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+          
+        scores -= np.max(scores, axis=1, keepdims=True) # avoid instability, N x C
+        # Softmax Loss
+        sum_exp_scores = np.exp(scores).sum(axis=1, keepdims=True)
+        softmax = np.exp(scores) / sum_exp_scores # N x C
+       
+        loss = np.sum(-np.log(softmax[np.arange(N), y])) #N x C
+        
+        # Average
+        loss /= N
 
-        pass
+        # Regularization
+        loss += reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -110,8 +124,28 @@ class TwoLayerNet(object):
         # grads['W1'] should store the gradient on W1, and be a matrix of same size #
         #############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+        
+        softmax[np.arange(N),y] -= 1 # replace all values by -1
+        softmax = softmax / N #average
+        
+        dW2 = scores_relu.T.dot(softmax) # H x C
+        db2 = np.sum(softmax, axis = 0)
+        
+        # W1 gradient
+        dW1 = softmax.dot(W2.T)          # N x H
+        dscores_relu = dW1 * (scores_relu>0)             # N x H
+        dW1 = X.T.dot(dscores_relu)              # D x H
 
-        pass
+        # b1 gradient
+        db1 = dscores_relu.sum(axis=0)
+
+        # regularization gradient
+        dW1 += reg * 2 * W1
+        dW2 += reg * 2 * W2
+        
+        #  and regulate
+
+        grads = {'W1':dW1, 'b1':db1, 'W2':dW2, 'b2':db2}
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
